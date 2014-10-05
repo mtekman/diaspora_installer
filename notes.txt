@@ -1,0 +1,102 @@
+{{Delete|Generic, manual compilation instructions; dangerous workarounds}}
+
+
+Note: I'm in the process of packaging this mess, but for now - here's how it's done.
+
+
+== The head-banging method ==
+
+
+=== Download and extract the FreeSpace archive, read the README ===
+
+  tar --lzma -xvf Diaspora_R1_Linux.tar.lzma 
+  cd Diaspora_R1_Linux
+  cd Diaspora/
+  nano README.txt
+
+=== Build fs2_open (using lua include fix) ===
+
+  cd fs2_open
+  ./autogen
+  make
+
+At this stage it throws lua related bugs.
+Read suggestions from here[http://www.hard-light.net/wiki/index.php/Fs2_open_on_Linux/Pre-Compile_Configuration], then:
+
+  LDFLAGS="-l:liblua.so.5.1 $LDFLAGS" CXXFLAGS="-I/usr/include/lua5.1 $CXXFLAGS" ./autogen.sh
+  make
+  mv code/fs2_open_3.6.13 ../fs2_open_diaspora
+  cd ..
+  
+
+=== Build wxLauncher ===
+
+ cd wxlauncher/build/
+ cmake -D USE_OPENAL=1 -D CMAKE_BUILD_TYPE=RelWithDebInfo -D DEVELOPMENT_MODE=1 ../
+
+Here it throws wxwidgets2.8 errors.
+Turns out it was just looking for wx-config-2.8 binary:
+
+ cmake -D USE_OPENAL=1 -D CMAKE_BUILD_TYPE=RelWithDebInfo -D DEVELOPMENT_MODE=1 -DwxWidgets_CONFIG_EXECUTABLE=/usr/bin/wx-config-2.8 ../
+ make
+
+Now it throws python3 related errors. Here I simply replaced the default python symlink with python2. Works, but not elegant solution:
+
+ sudo rm /usr/bin/python
+ sudo ln -s /usr/bin/python2 /usr/bin/python
+ make
+
+A little further now, but throws python-markdown errors
+ 
+  sudo pacman -S python2-markdown
+  make
+  #> Linking CXX executable wxlauncher
+  # Errors!
+
+CMake gets to 100% then fails
+Read this[https://code.google.com/p/wxlauncher/issues/detail?id=93] bug report and download patch in #10 (referred to as download.patch from now on)
+
+  mv download.patch wxlauncher
+  cat download.patch
+
+Near the header it tells you that the file it is patching is wxlauncher/code/apis/PlatformProfileManagerShared.cpp
+ 
+  mv download.patch code/apis/
+  cd code/apis/
+  patch < download.patch
+  #> patching file PlatformProfileManagerShared.cpp
+
+Now go back into build and restart cmake again for good measure
+
+  cd ../../build
+  cmake -D USE_OPENAL=1 -D CMAKE_BUILD_TYPE=RelWithDebInfo -D DEVELOPMENT_MODE=1 -DwxWidgets_CONFIG_EXECUTABLE=/usr/bin/wx-config-2.8 ../
+  make
+  #> Linking CXX executable wxlauncher
+  #> [100%] Built target wxlauncher
+
+Yay, it builds!
+
+=== Set up Diaspora ===
+
+Follow the rest of the readme
+
+  cp pro00099.template.ini pro00099.ini
+  chmod 644 pro00099.ini
+  pwd
+  #> /home/<blah>/<path>/Diaspora_R1_Linux/Diaspora
+
+Copy this location
+
+  nano pro00099.ini
+
+Paste it into the folder line to the current Diaspora folder location. Close and save your changes.
+
+  ./wxlauncher/build/wxlauncher --add-profile --profile=Diaspora --file=pro00099.ini
+  ./wxlauncher/build/wxlauncher --select-profile --profile=Diaspora
+
+A splash screen should flick across the screen for both of the above commands. Now it should all work:
+
+  ./wxlauncher/build/wxlauncher
+
+Enjoy
+
