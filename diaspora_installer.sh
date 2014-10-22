@@ -12,28 +12,33 @@ dest_dir="./opt_Diaspora/"
 
 #Main alias, automatically resumes
 aria2_d="aria2c --console-log-level=error -V -c --seed-time=0 -O"
+aria2_d="aria2c --console-log-level=error -V --seed-time=0 -O"
 
 
 #Get main file and 1.1 patch
-outfold=$(readlink -f ./)
+outfold=/$(readlink -f ./)
 
 diaspora_main=$outfold/"Diaspora_R1_Linux.tar.lzma"
 diaspora_patch=$outfold/"Diaspora_R1_Patch_1.1.tar.lzma"
 
 clear
 
+if [ : ]; then
+
 echo "Diaspora Installer Script"
 echo "========================="
-
+#wget -O "main.torrent" $diaspora_main_url
 echo ""
 echo "Stage 1a: Downloading Main file (torrent)"
-$runner $aria2_d 1="main.torrent" $diaspora_main_url
-$runner $aria2_d 1=$diaspora_main "main.torrent"
+$runner $aria2_d 1=/$diaspora_main $diaspora_main_url
+#$runner $aria2_d 1="main.torrent" $diaspora_main_url
+#$runner $aria2_d 1=$diaspora_main "main.torrent"
 echo ""
 echo "Stage 1b: Downloading Patch"
-$runner $aria2_d 1=$diaspora_patch $diaspora_patch_url
+$runner $aria2_d 1=/$diaspora_patch $diaspora_patch_url
 echo ""
 
+fi
 
 function untar_all(){
 	to=$1
