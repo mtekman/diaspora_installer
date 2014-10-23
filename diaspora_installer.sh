@@ -16,35 +16,37 @@ aria2_d="aria2c --console-log-level=error -V --seed-time=0 -O"
 
 
 #Get main file and 1.1 patch
-outfold=/$(readlink -f ./)
+outfold=~/Desktop/temp_bob
 
 diaspora_main=$outfold/"Diaspora_R1_Linux.tar.lzma"
 diaspora_patch=$outfold/"Diaspora_R1_Patch_1.1.tar.lzma"
 
 clear
 
-if [ : ]; then
+function untar_all(){
+	to=$1
+	file=$2
+    tar -C $to --checkpoint=300 --checkpoint-action='ttyout=\r%u' --lzma -xf  $file
+}
+
+mkdir -p $outfold
+
+if ! [ : ]; then
+
+cd $outfold
 
 echo "Diaspora Installer Script"
 echo "========================="
 #wget -O "main.torrent" $diaspora_main_url
 echo ""
 echo "Stage 1a: Downloading Main file (torrent)"
-$runner $aria2_d 1=/$diaspora_main $diaspora_main_url
-#$runner $aria2_d 1="main.torrent" $diaspora_main_url
-#$runner $aria2_d 1=$diaspora_main "main.torrent"
+$runner $aria2_d 1="$(basename $diaspora_main)" $diaspora_main_url
 echo ""
 echo "Stage 1b: Downloading Patch"
-$runner $aria2_d 1=/$diaspora_patch $diaspora_patch_url
+$runner $aria2_d 1="$(basename $diaspora_patch)" $diaspora_patch_url
 echo ""
 
-fi
-
-function untar_all(){
-	to=$1
-	file=$2
-    tar -C $to --checkpoint=300 --checkpoint-action='ttyout=\r%u' --lzma -xf  $file
-}
+cd -
 
 
 echo "Stage 2a: Unpacking Main file"
@@ -54,24 +56,28 @@ echo ""
 echo "Stage 2b: Unpacking Patch file"
 $runner untar_all $dest_dir $diaspora_patch
 
+fi
+
+
 patch_file_tar=$(readlink -f $(find $dest_dir -name "*Patch*.tar"))
 diaspora_fold=$(readlink -f $(find $dest_dir -type d -name "Diaspora"))
 
+if ! [ : ]; then
 
 echo "Stage 2c: Applying Patch..."
 $runner tar -C $diaspora_fold --checkpoint=1000 --checkpoint-action=dot -xf $patch_file_tar
 echo ""
 
+fi
 cd $diaspora_fold
 
 echo ""
 echo "Stage 3a: Building FS2 Open"
 cd fs2_open
-$runner LDFLAGS="-l:liblua.so.5.1 $LDFLAGS" CXXFLAGS="-I/usr/include/lua5.1 $CXXFLAGS" ./autogen.sh
+$runner eval "LDFLAGS=\"-l:liblua.so.5.1 $LDFLAGS\" CXXFLAGS=\"-I/usr/include/lua5.1 $CXXFLAGS\" ./autogen.sh"
 $runner make
 $runner mv code/fs2_open_* ../fs2_open_diaspora
 cd ..
-
 
 echo ""
 echo "Stage 3b: Building wxLauncher"
@@ -101,10 +107,12 @@ cd ../../
 #back into Diaspora fold
 echo ""
 echo "Stage 4: Configuring Launcher"
+
+
 profile=pro00099.ini
 $runner cp pro00099.template.ini $profile
 $runner chmod 644 $profile
-$runner sed -i "s~^folder=.*~folder=`pwd`~" $profile
+$runner sed -i "s~^folder=.*~folder=`pwd`^M~" $profile
 
 $runner ./wxlauncher/build/wxlauncher --add-profile --profile=Diaspora --file=$profile
 $runner ./wxlauncher/build/wxlauncher --select-profile --profile=Diaspora
